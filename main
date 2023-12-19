@@ -185,7 +185,6 @@ async def my_city_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         daily_weather_info[user_id] = ["", "", "", "", ""]
         for i in range(5):
             daily_weather_info[user_id][i] = parse_weather(geo_data, i)
-            print(daily_weather_info)
         inline_keyboard = [
             [InlineKeyboardButton("Today, " + geo_data['list'][0]['dt_txt'][:10], callback_data="0"),
              InlineKeyboardButton("Tomorrow, " + geo_data['list'][1 * 8]['dt_txt'][:10], callback_data="1")
@@ -230,7 +229,6 @@ def list_of_cities(geo_data: list, city: str) -> list:
             city_name = city_name.replace(", ", "", 1)
         callback_data = city_name + ':' + ','.join([str(geo_data[i]['lon']), str(geo_data[i]['lat'])])
         keyboard.append([InlineKeyboardButton(city_name, callback_data=callback_data)])
-        print(city_name)
     return keyboard
 
 
@@ -347,8 +345,6 @@ async def daily_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             text += daily_weather_info[user_id][3]
         case "4":
             text += daily_weather_info[user_id][4]
-    print("Hello")
-    print(text)
     # Sending weather information to the user
     await context.bot.send_message(chat_id=query.message.chat_id, text=text, parse_mode=ParseMode.MARKDOWN, reply_markup=ReplyKeyboardRemove())
     await context.bot.send_message(chat_id=query.message.chat_id, text="Is there anything else I can help with? 😇", reply_markup=main_menu_markup)
@@ -410,6 +406,10 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     None
     """
     await update.message.reply_text("See you next time! 👋", reply_markup=ReplyKeyboardRemove())
+    try:
+        del daily_weather_info[update.message.from_user.id]
+    except:
+        print("Key Not Present!")
     return ConversationHandler.END
 
 async def timeout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -424,6 +424,11 @@ async def timeout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     None
     """
     await context.bot.send_message(chat_id=update.message.from_user.id, text="See you next time! 👋", reply_markup=ReplyKeyboardRemove())
+    try:
+        del daily_weather_info[update.message.from_user.id]
+    except:
+        print("Key Not Present!")
+    
 
 
 async def send_daily_updates(context: ContextTypes.DEFAULT_TYPE) -> None:

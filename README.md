@@ -3,7 +3,7 @@
 Weather Bot is a Telegram bot that provides 3-hourly forecast weather for any city in the world. You can also set your city to receive daily weather updates every morning.
 
 ## Telegram id
-@your_city_weather_bot
+[@your_city_weather_bot](https://t.me/your_city_weather_bot)
 
 ## Features
 

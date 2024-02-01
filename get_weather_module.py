@@ -1,5 +1,4 @@
 import requests
-from datetime import datetime
 from config import *
 
 def _check_response(endpoint: str) -> dict:
@@ -54,7 +53,7 @@ def weather_by_coord(lat: str, lon: str) -> str:
     geo_data = _check_response(geo_endpoint)
     return geo_data
 
-def parse_weather(geo_data: dict, n_of_day: int) -> str:
+def parse_weather(geo_data: dict, city:str, n_of_day: int) -> str:
     """
     Parse weather information and format it as a message.
 
@@ -74,9 +73,11 @@ def parse_weather(geo_data: dict, n_of_day: int) -> str:
     start_idx = first_day_idx + (n_of_day - 1) * 8 if n_of_day != 0 else 0
     end_idx = start_idx + 8 if n_of_day != 0 else first_day_idx
     weather_dict = geo_data[start_idx:end_idx]
-    message = f"\n\t\t\t\t🌐 *Weather Information* 🌐\t\t\t\t\n\n"
+    date_only = geo_data[0]['dt_txt'].split()[0]
+    message = f"*Weather Forecast for {city} \n {date_only}* 🌐\n\n"
     for weather_data in weather_dict:
-        dt = datetime.utcfromtimestamp(weather_data['dt']).strftime('%Y-%m-%d %H:%M:%S')
+        time_only = weather_data['dt_txt'].split()[1]
+        hour_only = time_only.split(":")[0] + ":00"
         temp = "{:.2f}".format(weather_data['main']['temp'] - 273.15)
         feels_like = "{:.2f}".format(weather_data['main']['feels_like'] - 273.15)
         description = weather_data['weather'][0]['description']
@@ -84,10 +85,10 @@ def parse_weather(geo_data: dict, n_of_day: int) -> str:
         humidity = weather_data['main']['humidity']
         # Format the message using Markdown
         message += (
-            f"_\t\t\t\t📅\t\t{dt}\t\t📅\t\t\t\t\n\n_"
+            f"_• {hour_only}_\n"
             f"*🌡️  Temperature:* {temp}°C\n"
             f"*💓  Feels Like:* {feels_like}°C\n"
-            f"*📰  Description:* {description}\n"
+            f"*📰  Description:* {description.capitalize()}\n"
             f"*🌬️  Wind Speed:* {wind_speed} m/s\n"
             f"*💦  Humidity:* {humidity}%\n\n"
         )

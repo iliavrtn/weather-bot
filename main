@@ -175,16 +175,17 @@ async def my_city_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """
     user_id = update.message.from_user.id
     user_data = (int(user_id),)
-    data = db_module.execute_query(f'SELECT lat,lon FROM telegram_users.users WHERE user_id= %s', user_data)
+    data = db_module.execute_query(f'SELECT lat,lon,city FROM telegram_users.users WHERE user_id= %s', user_data)
     if data:
         lat, lon = data[0][0], data[0][1]
+        city = data[0][2]
         geo_data = weather_by_coord(lat, lon)
         if 'err' in geo_data:
             await update.message.reply_text(text=geo_data['err_msg'], reply_markup=ReplyKeyboardRemove())
             return ConversationHandler.END
         daily_weather_info[user_id] = ["", "", "", "", ""]
         for i in range(5):
-            daily_weather_info[user_id][i] = parse_weather(geo_data, i)
+            daily_weather_info[user_id][i] = parse_weather(geo_data, city, i)
         inline_keyboard = [
             [InlineKeyboardButton("Today, " + geo_data['list'][0]['dt_txt'][:10], callback_data="0"),
              InlineKeyboardButton("Tomorrow, " + geo_data['list'][1 * 8]['dt_txt'][:10], callback_data="1")
@@ -223,12 +224,15 @@ def list_of_cities(geo_data: list, city: str) -> list:
     country_arr = [list([item['state'], item['country']]) if 'state' in item else list(["", item['country']])
                    for item in geo_data]
     keyboard = []
+    cities=[]
     for i in range(len(country_arr)):
         city_name = ", ".join([city, country_arr[i][0], country_arr[i][1]])
-        if city_name.find(", , ") > 0:
-            city_name = city_name.replace(", ", "", 1)
-        callback_data = city_name + ':' + ','.join([str(geo_data[i]['lon']), str(geo_data[i]['lat'])])
-        keyboard.append([InlineKeyboardButton(city_name, callback_data=callback_data)])
+        if city_name not in cities:
+            cities.append(city_name)
+            if city_name.find(", , ") > 0:  # some cities does not have states 
+                city_name = city_name.replace(", ", "", 1)
+            callback_data = city_name + ':' + ','.join([str(geo_data[i]['lon']), str(geo_data[i]['lat'])])
+            keyboard.append([InlineKeyboardButton(city_name, callback_data=callback_data)])
     return keyboard
 
 
@@ -245,6 +249,7 @@ async def choose_city_button(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
 
     index = query.data.find(':')
+    city = query.data[:index]
     lon_index = query.data.find(',', index)
     lon = query.data[index + 1:lon_index]
     lat = query.data[lon_index + 1:]
@@ -258,7 +263,7 @@ async def choose_city_button(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
     daily_weather_info[user_id] = ["", "", "", "", ""]
     for i in range(5):
-        daily_weather_info[user_id][i] = parse_weather(geo_data, i)
+        daily_weather_info[user_id][i] = parse_weather(geo_data, city, i)
     inline_keyboard = [
         [InlineKeyboardButton("Today, " + geo_data['list'][0]['dt_txt'][:10], callback_data="0"),
          InlineKeyboardButton("Tomorrow, " + geo_data['list'][1 * 8]['dt_txt'][:10], callback_data="1")
@@ -446,8 +451,8 @@ async def send_daily_updates(context: ContextTypes.DEFAULT_TYPE) -> None:
     if users:
         for user in users:
             geo_data = weather_by_coord(user[1], user[2])
-            message = user[3] + '\n\n'
-            message += parse_weather(geo_data, 0)
+            city = user[3] + '\n\n'
+            message = parse_weather(geo_data, city, 0)
             await context.bot.send_message(chat_id=user[0], text=message, parse_mode=ParseMode.MARKDOWN)
 
 
@@ -555,7 +560,7 @@ def main() -> None:
     application.add_handler(conv_handler)
     application.add_handler(outside_conversation_message)
     application.add_handler(help_command)
-    application.job_queue.run_daily(send_daily_updates, time=time(hour=7, minute=0, tzinfo=pytz.timezone('Asia/Tel_Aviv')))
+    application.job_queue.run_daily(send_daily_updates, time=time(hour=7, minute=00, tzinfo=pytz.timezone('Asia/Tel_Aviv')))
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
